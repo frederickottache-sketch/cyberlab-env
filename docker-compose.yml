@@ -1,0 +1,129 @@
+version: "3.8"
+
+networks:
+  cyberlab:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+services:
+
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: dvwa
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.10
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  metasploitable:
+    image: tleemcjr/metasploitable3-ub1404
+    container_name: metasploitable
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.11
+    ports:
+      - "2222:22"
+    restart: unless-stopped
+    # Exposes: FTP(21), SSH(22), HTTP(80/8080), SMB(445), MySQL(3306)
+
+  attacker:
+    image: kalilinux/kali-last-release
+    container_name: attacker
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.5
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./results:/results
+      - ./scripts:/scripts
+      - ./rules:/rules
+    restart: unless-stopped
+    command: >
+      bash -c "apt-get update -qq &&
+               apt-get install -y -qq nmap nikto sqlmap metasploit-framework
+               hashcat john curl netcat-traditional wireshark-common tshark
+               python3 whatweb && tail -f /dev/null"
+
+  suricata-ids:
+    image: jasonish/suricata:latest
+    container_name: suricata-ids
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.20
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    network_mode: "host"          # Must see all lab traffic
+    volumes:
+      - ./rules/local.rules:/etc/suricata/rules/local.rules:ro
+      - ./configs/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - suricata-logs:/var/log/suricata
+    restart: unless-stopped
+    command: suricata -i docker0 --af-packet -l /var/log/suricata
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: elasticsearch
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.30
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: kibana
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.31
+    environment:
+      - ELASTICSEARCH_HOSTS=http://172.20.0.30:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  openvas:
+    image: greenbone/openvas-scanner
+    container_name: openvas
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.50
+    ports:
+      - "9392:9392"
+    restart: unless-stopped
+
+  misp:
+    image: coolacid/misp-docker:core
+    container_name: misp
+    networks:
+      cyberlab:
+        ipv4_address: 172.20.0.40
+    ports:
+      - "443:443"
+    environment:
+      - MISP_ADMIN_EMAIL=admin@admin.test
+      - MISP_ADMIN_PASSPHRASE=admin
+      - MISP_BASEURL=https://172.20.0.40
+    restart: unless-stopped
+
+volumes:
+  es-data:
+  suricata-logs:

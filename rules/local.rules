@@ -1,0 +1,124 @@
+# =============================================================
+# MIT Cyberlab — Custom Suricata Detection Rules
+# File: /etc/suricata/rules/local.rules
+# Session 3 — Students tune these rules during the lab
+# =============================================================
+
+# ---------------------------------------------------------------
+# Rule 1: Nmap SYN Scan Detection
+# Technique: T1595.001 — Active Scanning: Port Scanning
+# Detects the characteristic window size and TTL of Nmap default scans
+# ---------------------------------------------------------------
+alert tcp any any -> $HOME_NET any (
+  msg:"MIT-LAB Nmap SYN Scan Detected";
+  flags:S;
+  window:1024;
+  ttl:64;
+  threshold:type both, track by_src, count 20, seconds 3;
+  classtype:attempted-recon;
+  sid:9000001; rev:1;
+)
+
+# ---------------------------------------------------------------
+# Rule 2: SQL Injection — UNION SELECT in URI
+# Technique: T1190 — Exploit Public-Facing Application
+# Detects classic UNION-based SQL injection attempts
+# ---------------------------------------------------------------
+alert http $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (
+  msg:"MIT-LAB SQL Injection UNION SELECT Detected";
+  flow:established,to_server;
+  http.uri;
+  content:"UNION";
+  nocase;
+  content:"SELECT";
+  nocase;
+  distance:0;
+  classtype:web-application-attack;
+  sid:9000002; rev:1;
+)
+
+# ---------------------------------------------------------------
+# Rule 3: XSS — <script> tag in HTTP request body or URI
+# Technique: T1059.007 — Command and Scripting: JavaScript
+# ---------------------------------------------------------------
+alert http $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (
+  msg:"MIT-LAB XSS Script Tag in HTTP Request";
+  flow:established,to_server;
+  http.request_body;
+  content:"<script>";
+  nocase;
+  classtype:web-application-attack;
+  sid:9000003; rev:1;
+)
+
+# ---------------------------------------------------------------
+# Rule 4: HTTP Brute Force — repeated POSTs to login page
+# Technique: T1110 — Brute Force
+# Threshold: 10 POST requests in 60 seconds from same source
+# ---------------------------------------------------------------
+alert http $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (
+  msg:"MIT-LAB HTTP Brute Force Login Attempt";
+  flow:established,to_server;
+  http.method;
+  content:"POST";
+  http.uri;
+  content:"login.php";
+  threshold:type both, track by_src, count 10, seconds 60;
+  classtype:attempted-admin;
+  sid:9000004; rev:1;
+)
+
+# ---------------------------------------------------------------
+# Rule 5: Potential Data Exfiltration — large outbound HTTP response
+# Technique: T1041 — Exfiltration Over C2 Channel
+# Alerts when responses exceed 50 KB — tune threshold as needed
+# ---------------------------------------------------------------
+alert http $HTTP_SERVERS any -> $EXTERNAL_NET any (
+  msg:"MIT-LAB Potential Data Exfiltration - Large HTTP Response";
+  flow:established,to_client;
+  dsize:>50000;
+  threshold:type threshold, track by_dst, count 3, seconds 60;
+  classtype:policy-violation;
+  sid:9000005; rev:1;
+)
+
+# ---------------------------------------------------------------
+# Rule 6: Nikto Web Scanner Detection
+# Detects Nikto's default User-Agent string
+# ---------------------------------------------------------------
+alert http $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (
+  msg:"MIT-LAB Nikto Web Scanner Detected";
+  flow:established,to_server;
+  http.user_agent;
+  content:"Nikto";
+  nocase;
+  classtype:attempted-recon;
+  sid:9000006; rev:1;
+)
+
+# ---------------------------------------------------------------
+# Rule 7: Metasploit Meterpreter reverse shell (default stage)
+# Technique: T1210 — Exploitation of Remote Services
+# ---------------------------------------------------------------
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (
+  msg:"MIT-LAB Possible Meterpreter Reverse Shell";
+  flow:established,to_server;
+  dsize:>200;
+  flags:PA;
+  threshold:type both, track by_src, count 5, seconds 5;
+  classtype:trojan-activity;
+  sid:9000007; rev:1;
+)
+
+# ---------------------------------------------------------------
+# Rule 8: FTP Anonymous Login Attempt
+# Technique: T1078 — Valid Accounts
+# ---------------------------------------------------------------
+alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (
+  msg:"MIT-LAB FTP Anonymous Login Attempt";
+  flow:established,to_server;
+  content:"USER anonymous";
+  nocase;
+  classtype:policy-violation;
+  sid:9000008; rev:1;
+)

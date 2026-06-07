@@ -1,0 +1,137 @@
+{
+  "name": "MIT Cyberlab — Full Engagement TTPs",
+  "versions": {
+    "attack": "14",
+    "navigator": "4.9",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Techniques observed across Sessions 1–4 of the MIT Cybersecurity Fundamentals lab. Green = detected by Suricata. Red = not detected (detection gap).",
+  "filters": {
+    "platforms": ["Linux", "Network"]
+  },
+  "sorting": 0,
+  "layout": {
+    "layout": "side",
+    "aggregateFunction": "average",
+    "showID": true,
+    "showName": true,
+    "showAggregateScores": false,
+    "countUnscored": false
+  },
+  "hideDisabled": false,
+  "techniques": [
+    {
+      "techniqueID": "T1595",
+      "tactic": "reconnaissance",
+      "color": "#4caf50",
+      "comment": "Session 1 — Nmap host discovery. Detected by Suricata Rule 9000001.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Nmap"}, {"name": "Session", "value": "1"}],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1595.001",
+      "tactic": "reconnaissance",
+      "color": "#4caf50",
+      "comment": "Session 1 — Nmap SYN port scan. Detected by Rule 9000001.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Nmap"}, {"name": "Session", "value": "1"}]
+    },
+    {
+      "techniqueID": "T1190",
+      "tactic": "initial-access",
+      "color": "#4caf50",
+      "comment": "Sessions 1 & 2 — OpenVAS/Nikto scan + sqlmap exploitation. Detected by Rule 9000002.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "sqlmap / Nikto / OpenVAS"}, {"name": "Session", "value": "1,2"}]
+    },
+    {
+      "techniqueID": "T1059.007",
+      "tactic": "execution",
+      "color": "#f44336",
+      "comment": "Session 2 — Stored/Reflected XSS via DVWA. Rule 9000003 partially detects body injection. URI-based payloads may be missed.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Burp Suite / Manual"}, {"name": "Session", "value": "2"}]
+    },
+    {
+      "techniqueID": "T1110",
+      "tactic": "credential-access",
+      "color": "#4caf50",
+      "comment": "Session 2 — Brute force login attempts. Detected by Rule 9000004.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Hydra / Manual"}, {"name": "Session", "value": "2"}],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1110.002",
+      "tactic": "credential-access",
+      "color": "#f44336",
+      "comment": "Session 2 — Offline MD5 hash cracking with Hashcat/John. Cannot be detected by network IDS.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Hashcat / John the Ripper"}, {"name": "Session", "value": "2"}]
+    },
+    {
+      "techniqueID": "T1210",
+      "tactic": "lateral-movement",
+      "color": "#f44336",
+      "comment": "Session 4 — ProFTPD mod_copy RCE (CVE-2015-3306) via Metasploit. Not caught by default Suricata rules — detection gap.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Metasploit Framework"}, {"name": "Session", "value": "4"}]
+    },
+    {
+      "techniqueID": "T1003.008",
+      "tactic": "credential-access",
+      "color": "#f44336",
+      "comment": "Session 4 — /etc/passwd dumped via Meterpreter hashdump. Host-only artefact, not network-visible.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Meterpreter"}, {"name": "Session", "value": "4"}]
+    },
+    {
+      "techniqueID": "T1041",
+      "tactic": "exfiltration",
+      "color": "#4caf50",
+      "comment": "Session 4 & 5 — netcat data exfiltration. Detected by Rule 9000005 (large response threshold).",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "netcat / meterpreter"}, {"name": "Session", "value": "4,5"}]
+    },
+    {
+      "techniqueID": "T1071.001",
+      "tactic": "command-and-control",
+      "color": "#4caf50",
+      "comment": "All sessions — HTTP used as application layer protocol across all tools.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "All HTTP tools"}, {"name": "Session", "value": "All"}]
+    },
+    {
+      "techniqueID": "T1083",
+      "tactic": "discovery",
+      "color": "#f44336",
+      "comment": "Session 4 — File and directory enumeration on Metasploitable3. Not detected by Suricata.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "Meterpreter shell / find"}, {"name": "Session", "value": "4"}]
+    },
+    {
+      "techniqueID": "T1548",
+      "tactic": "privilege-escalation",
+      "color": "#f44336",
+      "comment": "Session 4 — SUID binary enumeration for privilege escalation vectors. Not detected.",
+      "enabled": true,
+      "metadata": [{"name": "Tool", "value": "find -perm -u=s"}, {"name": "Session", "value": "4"}]
+    }
+  ],
+  "gradient": {
+    "colors": ["#f44336", "#4caf50"],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [
+    {"label": "Detected by Suricata", "color": "#4caf50"},
+    {"label": "Not Detected (Gap)", "color": "#f44336"}
+  ],
+  "metadata": [],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#37474f",
+  "selectTechniquesAcrossTactics": true,
+  "selectSubtechniquesWithParent": false
+}

@@ -1,0 +1,11 @@
+# Student artefacts — not committed to repo
+results/
+*.pcap
+*.log
+*.core
+*.dump
+*.ndjson.bak
+
+# OS
+.DS_Store
+Thumbs.db
