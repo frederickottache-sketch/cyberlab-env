@@ -1,4 +1,4 @@
-# MIT Cyberlab — Cybersecurity Fundamentals Lab Environment
+# MIT8204 Cyberlab — Cybersecurity Fundamentals Lab Environment
 
 Containerised threat hunting, exploitation, and defence lab for second-semester MIT students.
 
