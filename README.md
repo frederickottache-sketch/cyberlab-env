@@ -22,6 +22,11 @@ sudo apt install -y curl wget git vim net-tools tcpdump wireshark nmap \
 sudo usermod -aG docker $USER
 sudo usermod -aG wireshark $USER
 # Log out and back in
+
+# Required for Elasticsearch 8.x — increase virtual memory limit
+sudo sysctl -w vm.max_map_count=262144
+# Make it permanent across reboots
+echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
 ```
 
 ### 2. Clone and start the lab
@@ -29,10 +34,21 @@ sudo usermod -aG wireshark $USER
 ```bash
 git clone https://github.com/mit-cyberlab/cyberlab-env.git ~/cyberlab
 cd ~/cyberlab
-docker-compose pull        # ~5 GB download
-docker-compose up -d
-docker-compose ps          # All containers should show 'Up'
+
+# Pull all pre-built images (~5 GB)
+docker compose pull
+
+# Build the attacker image locally (bakes all tools in at build time)
+docker compose build
+
+# Start everything — force-recreate ensures fresh containers from new images
+docker compose up -d --force-recreate
+
+# Verify all containers are Up (not Restarting)
+docker compose ps
 ```
+
+> **If you already ran `docker compose up` before:** The attacker container may still be running the old image. Always use `--force-recreate` after a `build` to ensure the new image is used.
 
 ### 3. Create the results directory and set permissions
 
