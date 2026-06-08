@@ -1,4 +1,4 @@
-# MIT8204 Cyberlab — Cybersecurity Fundamentals Lab Environment
+# MIT Cyberlab — Cybersecurity Fundamentals Lab Environment
 
 Containerised threat hunting, exploitation, and defence lab for second-semester MIT students.
 
@@ -34,11 +34,33 @@ docker-compose up -d
 docker-compose ps          # All containers should show 'Up'
 ```
 
-### 3. Verify the environment
+### 3. Create the results directory and set permissions
+
+```bash
+mkdir -p ~/cyberlab-env/results
+chmod 777 ~/cyberlab-env/results
+```
+
+> This is mounted into the attacker container at `/results/`. All scan outputs, captures, and reports go here. You will see them on your host at `~/cyberlab-env/results/`.
+
+### 4. Verify the environment
 
 ```bash
 bash scripts/verify_setup.sh
 ```
+
+---
+
+## Path Reference
+
+| Location | What it is |
+|----------|------------|
+| `~/cyberlab-env/results/` | Host-side folder — view your artefacts here |
+| `/results/` | Same folder, mounted inside the **attacker container** — write all tool output here |
+| `/scripts/` | Lab scripts, mounted inside the attacker container |
+| `/rules/` | Suricata rules, mounted inside the attacker container |
+
+> **Rule of thumb:** If you are on the host prompt (`ubuntu-2@ubuntu-2`), use `~/cyberlab-env/results/`. If you are inside a container (`root@attacker`), use `/results/`.
 
 ---
 
@@ -48,12 +70,12 @@ bash scripts/verify_setup.sh
 |-----------------|---------------|----------------|-------------------------|
 | Attacker (Kali) | 172.20.0.5    | —              | —                       |
 | DVWA            | 172.20.0.10   | 80             | admin / password        |
-| Metasploitable3 | 172.20.0.11   | 21,22,80,445,3306,8080 | vagrant / vagrant |
+| Metasploitable3 | 172.20.0.11   | 21,22,80,445,3306,8080 | msfadmin / msfadmin |
 | Suricata IDS    | 172.20.0.20   | —              | —                       |
 | Elasticsearch   | 172.20.0.30   | 9200           | —                       |
 | Kibana (SIEM)   | 172.20.0.31   | 5601           | —                       |
-| MISP            | 172.20.0.40   | 443            | admin@admin.test / admin |
-| OpenVAS         | 172.20.0.50   | 9392           | admin / admin           |
+| MISP            | 172.20.0.40   | 8443 (HTTPS), 8880 (HTTP) | admin@admin.test / admin |
+| OpenVAS (GVM)   | 172.20.0.50   | 9392           | admin / adminpassword   |
 
 ---
 
@@ -100,9 +122,15 @@ cyberlab-env/
 
 ### Session 1 — Reconnaissance
 
+> **Where to run commands:** All scan commands run **inside the attacker container** where `/results/` is mounted from `./results/` on your host. Do NOT run nmap/nikto directly on the host — the `/results/` path does not exist there.
+
 ```bash
-# Enter attacker container
+# Step 1: Enter the attacker container (all subsequent commands run inside it)
 docker exec -it attacker bash
+
+# Step 2: Confirm /results is mounted and writable
+ls /results/
+touch /results/test && echo "writable" && rm /results/test
 
 # Host discovery
 nmap -sn 172.20.0.0/24 -oN /results/host_discovery.txt
@@ -120,9 +148,12 @@ nmap --script vuln 172.20.0.11 -oN /results/meta3_vuln_scripts.txt
 nikto -h http://172.20.0.10 -output /results/nikto_dvwa.txt -Format txt
 ```
 
+> **Results on your host:** All files written to `/results/` inside the container appear in `~/cyberlab-env/results/` on your host machine.
+
 ### Session 2 — Web Exploitation
 
 ```bash
+# Enter the attacker container first — all commands below run inside it
 docker exec -it attacker bash
 
 # SQL injection (replace PHPSESSID with value from DVWA login)
@@ -163,11 +194,11 @@ docker exec suricata-ids bash -c \
 ### Session 4 — Exploitation & Forensics
 
 ```bash
-# Metasploit — ProFTPD exploit
+# Metasploit — run from inside attacker container
 docker exec -it attacker msfconsole -q -r /scripts/exploit_script.rc
 
-# Collect evidence with chain of custody
-bash scripts/collect_evidence.sh /results/mem_dump.core "Memory dump Metasploitable3"
+# Collect evidence with chain of custody (run from ~/cyberlab-env/ on host)
+bash scripts/collect_evidence.sh results/mem_dump.core "Memory dump Metasploitable3"
 
 # Volatility 3 analysis
 vol -f /results/mem_dump.core linux.pslist.PsList
@@ -179,8 +210,10 @@ vol -f /results/mem_dump.core linux.malfind.Malfind
 ### Session 5 — Red/Blue Capstone
 
 ```bash
-# Red Team (run from attacker container)
-docker exec -it attacker bash /scripts/redteam_script.sh <PHPSESSID>
+# Red Team — enter the container first, then run the script
+docker exec -it attacker bash
+# Inside container:
+bash /scripts/redteam_script.sh <PHPSESSID>
 
 # Blue Team — live alert monitoring
 curl -X GET 'http://172.20.0.30:9200/suricata-*/_search?pretty' \
